@@ -1,7 +1,7 @@
 # test_models.py
 import google.generativeai as genai
 
-api_key = "YOUR_API_KEY_HERE"  # Replace with your key
+api_key = "AIzaSyApdw7DT1rJC4Nk79c1-fsJ-jR0QeqBmvo"  # Replace with your key
 genai.configure(api_key=api_key)
 
 try:
