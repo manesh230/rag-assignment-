@@ -1,226 +1,268 @@
 # app.py
 import streamlit as st
+import google.generativeai as genai
 import os
-import json
-import sys
-import tempfile
-from pathlib import Path
 
 # Page configuration
 st.set_page_config(
-    page_title="Medical RAG Assistant",
+    page_title="Medical AI Assistant",
     page_icon="🏥",
     layout="wide"
 )
 
-# Add custom CSS
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
         font-size: 2.5rem;
         color: #1E3A8A;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
     }
-    .stButton button {
-        background-color: #3B82F6;
-        color: white;
-        font-weight: bold;
+    .info-box {
+        background-color: #E0F2FE;
+        border-left: 5px solid #0EA5E9;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+    }
+    .success-box {
+        background-color: #D1FAE5;
+        border-left: 5px solid #10B981;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
     }
     .warning-box {
         background-color: #FEF3C7;
         border-left: 5px solid #F59E0B;
         padding: 1rem;
         margin: 1rem 0;
-        border-radius: 0.25rem;
+        border-radius: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Display title
-st.markdown('<h1 class="main-header">🏥 Medical RAG Assistant</h1>', unsafe_allow_html=True)
+# Title
+st.markdown('<h1 class="main-header">🏥 Medical AI Assistant</h1>', unsafe_allow_html=True)
 
-# Disclaimer
-st.markdown("""
-<div class="warning-box">
-⚠ <strong>Disclaimer:</strong> This is an educational tool. Not for medical diagnosis or treatment.
-</div>
-""", unsafe_allow_html=True)
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'model' not in st.session_state:
+    st.session_state.model = None
 
 # Sidebar
 with st.sidebar:
-    st.title("⚙ Setup")
+    st.title("⚙️ Configuration")
     
-    api_key = st.text_input("Enter Gemini API Key:", type="password")
+    # API Key input
+    if 'GEMINI_API_KEY' in st.secrets:
+        api_key = st.secrets['GEMINI_API_KEY']
+        st.success("✅ Using API key from secrets")
+    else:
+        api_key = st.text_input(
+            "Enter Gemini API Key:",
+            type="password",
+            help="Get it from https://makersuite.google.com/app/apikey"
+        )
+    
+    # Model selection
+    st.subheader("Model Selection")
+    model_option = st.selectbox(
+        "Choose model:",
+        [
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-flash-latest",
+            "gemini-pro",
+            "models/gemini-1.5-pro-latest",
+            "models/gemini-1.5-flash-latest"
+        ],
+        index=0
+    )
     
     st.markdown("---")
-    st.subheader("Instructions")
-    st.info("""
-    1. Enter your Gemini API key
-    2. Click 'Initialize System'
-    3. Ask medical questions
-    """)
     
-    st.markdown("---")
-    st.subheader("Support")
-    st.write("For issues, check the terminal logs.")
-
-# Main content area
-st.subheader("🔍 Ask Medical Questions")
-
-# Initialize session state
-if 'initialized' not in st.session_state:
-    st.session_state.initialized = False
-if 'error' not in st.session_state:
-    st.session_state.error = None
-
-# Initialize button
-if not st.session_state.initialized:
-    if st.button("🚀 Initialize System", use_container_width=True):
-        with st.spinner("Setting up system..."):
+    # Test connection button
+    if api_key and model_option:
+        if st.button("Test Connection", use_container_width=True):
             try:
-                # Try to import dependencies
-                import chromadb
-                from chromadb.utils import embedding_functions
-                import google.generativeai as genai
+                genai.configure(api_key=api_key)
                 
-                st.success("✅ Libraries imported successfully!")
+                # Try different model names
+                models_to_try = [
+                    model_option,
+                    "gemini-1.5-pro-latest",
+                    "gemini-1.5-flash-latest",
+                    "gemini-pro",
+                    "models/gemini-1.5-pro-latest"
+                ]
                 
-                # Create a mock RAG system for demo
-                class DemoRAGSystem:
-                    def _init_(self):
-                        self.demo_data = {
-                            "migraine": "Migraine symptoms include headache, nausea, sensitivity to light/sound. Risk factors: family history, hormonal changes.",
-                            "chest pain": "Chest pain evaluation includes ECG, troponin tests, chest X-ray. Common causes: angina, GERD, anxiety.",
-                            "hypertension": "Hypertension management: lifestyle changes, ACE inhibitors, beta-blockers. Monitor BP regularly.",
-                            "diabetes": "Diabetes symptoms: increased thirst, frequent urination, fatigue. Management: diet, exercise, medication.",
-                            "asthma": "Asthma: wheezing, shortness of breath, chest tightness. Triggers: allergens, exercise, cold air."
-                        }
-                    
-                    def query(self, question, top_k=3):
-                        results = []
-                        for key, value in self.demo_data.items():
-                            if any(word in question.lower() for word in key.split()):
-                                results.append(value)
-                        return results if results else ["No specific information found. Please consult a healthcare professional."]
+                success = False
+                for model_name in models_to_try:
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        response = model.generate_content("Hello")
+                        st.success(f"✅ Connected! Using model: {model_name}")
+                        st.session_state.available_model = model_name
+                        success = True
+                        break
+                    except:
+                        continue
                 
-                # Initialize AI
-                if api_key:
-                    genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-pro')
-                    st.session_state.model = model
-                    st.session_state.rag = DemoRAGSystem()
-                    st.session_state.initialized = True
-                    st.success("✅ System initialized successfully!")
-                    st.rerun()
-                else:
-                    st.error("Please enter your Gemini API key")
+                if not success:
+                    st.error("❌ Could not connect with any model. Check your API key.")
                     
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-                st.session_state.error = str(e)
+                st.error(f"❌ Connection error: {str(e)}")
+
+# Main content
+if not api_key:
+    st.markdown("""
+    <div class="info-box">
+    <h3>🔑 Get Started</h3>
+    <p>To use this Medical AI Assistant, you need a Gemini API key:</p>
+    <ol>
+    <li>Go to <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+    <li>Sign in with Google</li>
+    <li>Click "Get API Key" → "Create API Key"</li>
+    <li>Copy the key and paste it in the sidebar</li>
+    </ol>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.session_state.error:
-        with st.expander("Error Details"):
-            st.code(st.session_state.error)
-
-# If initialized, show chat interface
-if st.session_state.initialized:
-    # Chat input
-    question = st.text_area("Enter your medical question:", height=100)
-    
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        ask_btn = st.button("Ask", type="primary")
-    
-    if ask_btn and question:
-        with st.spinner("Thinking..."):
-            try:
-                # Get context from RAG
-                context_chunks = st.session_state.rag.query(question)
-                context = "\n".join(context_chunks)
-                
-                # Generate response
-                prompt = f"""You are a medical assistant. Use this context to answer the question:
-                
-Context: {context}
-
-Question: {question}
-
-Provide a helpful, accurate answer. Include:
-1. Key information
-2. When to seek medical help
-3. Important precautions
-
-Always remind users to consult healthcare professionals."""
-
-                response = st.session_state.model.generate_content(prompt)
-                
-                # Display response
-                st.markdown("### 🤖 AI Response")
-                st.markdown(response.text)
-                
-                # Show context used
-                with st.expander("📚 Context Used"):
-                    for i, chunk in enumerate(context_chunks):
-                        st.markdown(f"*Source {i+1}:*")
-                        st.info(chunk)
-                        
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-    
-    # Sample questions
     st.markdown("---")
     st.subheader("💡 Sample Questions")
-    
     samples = [
-        "What are migraine symptoms?",
-        "How is chest pain evaluated?",
-        "What is hypertension management?",
-        "Tell me about diabetes symptoms",
-        "What are asthma triggers?"
+        "What are the symptoms of migraine?",
+        "How to manage high blood pressure?",
+        "What are heart attack warning signs?",
+        "Tell me about diabetes prevention"
     ]
     
-    cols = st.columns(3)
+    cols = st.columns(2)
     for i, sample in enumerate(samples):
-        with cols[i % 3]:
-            if st.button(sample, use_container_width=True):
-                st.session_state.sample_question = sample
-                st.rerun()
-    
-    if 'sample_question' in st.session_state:
-        st.text_input("Selected question:", value=st.session_state.sample_question, disabled=True)
+        with cols[i % 2]:
+            st.info(sample)
+else:
+    # Initialize Gemini
+    try:
+        genai.configure(api_key=api_key)
+        
+        # Try to get available models
+        try:
+            models = genai.list_models()
+            available_models = [model.name for model in models]
+            
+            # Find the best model
+            preferred_models = [
+                "models/gemini-1.5-pro-latest",
+                "gemini-1.5-pro-latest",
+                "models/gemini-1.5-flash-latest",
+                "gemini-1.5-flash-latest",
+                "models/gemini-pro",
+                "gemini-pro"
+            ]
+            
+            selected_model = None
+            for model in preferred_models:
+                if model in str(available_models):
+                    selected_model = model
+                    break
+            
+            if selected_model:
+                st.session_state.model = genai.GenerativeModel(selected_model)
+                st.markdown(f"""
+                <div class="success-box">
+                ✅ Connected to: <strong>{selected_model}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.error("No supported models found. Available models:")
+                for model in available_models:
+                    st.write(f"- {model}")
+                
+        except Exception as e:
+            st.error(f"Error listing models: {str(e)}")
+            # Fallback to a common model
+            try:
+                st.session_state.model = genai.GenerativeModel("gemini-1.5-flash-latest")
+                st.success("✅ Connected using fallback model")
+            except:
+                st.error("Could not connect to any model")
+        
+    except Exception as e:
+        st.error(f"Configuration error: {str(e)}")
 
-# Instructions for Streamlit Cloud
-with st.expander("ℹ Deployment Instructions"):
-    st.markdown("""
-    ### For Streamlit Cloud:
+# Chat interface
+if api_key and st.session_state.model:
+    # Display chat messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
     
-    1. *Create requirements.txt:*
-    txt
-    streamlit
-    chromadb
-    sentence-transformers
-    google-generativeai
+    # Chat input
+    if prompt := st.chat_input("Ask a medical question..."):
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Generate response
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    # Medical context prompt
+                    medical_prompt = f"""You are a medical AI assistant. Provide accurate, helpful medical information.
+                    
+                    Question: {prompt}
+                    
+                    Guidelines:
+                    1. Provide evidence-based information
+                    2. Mention when to seek medical help
+                    3. Include important precautions
+                    4. End with: "⚠️ Disclaimer: This is for educational purposes. Consult a healthcare professional for medical advice."
+                    
+                    Response:"""
+                    
+                    response = st.session_state.model.generate_content(medical_prompt)
+                    st.markdown(response.text)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                    
+                except Exception as e:
+                    error_msg = f"Error: {str(e)}"
+                    st.error(error_msg)
     
-    
-    2. *Add your files to GitHub:*
-    - app.py
-    - requirements.txt
-    
-    3. *Deploy on Streamlit Cloud:*
-    - Go to [share.streamlit.io](https://share.streamlit.io)
-    - Connect your GitHub repository
-    - Main file path: app.py
-    
-    4. *Add secrets:*
-    - Go to app settings → Secrets
-    - Add your Gemini API key:
-    toml
-    GEMINI_API_KEY = "your-api-key-here"
-    
-    """)
+    # Clear chat button
+    if st.session_state.messages:
+        if st.button("Clear Chat"):
+            st.session_state.messages = []
+            st.rerun()
+
+# Alternative simplified version (if above doesn't work)
+st.markdown("---")
+with st.expander("🔄 Alternative: Use this simple test"):
+    if st.button("Test Simple Connection"):
+        try:
+            genai.configure(api_key=api_key)
+            
+            # List available models
+            st.write("📋 Available Models:")
+            models = genai.list_models()
+            for model in models:
+                st.write(f"- {model.name}")
+            
+            # Try to use the first available model
+            if models:
+                model_name = models[0].name
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content("Hello, test")
+                st.success(f"✅ Success with model: {model_name}")
+                st.write(f"Response: {response.text}")
+                
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
 
 # Footer
 st.markdown("---")
-st.markdown("Built with ❤ using Streamlit, Gemini AI, and ChromaDB")
+st.caption("⚠️ For educational purposes only. Not for medical diagnosis.")
