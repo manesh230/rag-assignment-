@@ -1,5 +1,6 @@
-# Minimal requirements.txt
-streamlit
-chromadb
+streamlit>=1.28.0
+chromadb==0.4.15
 sentence-transformers
 google-generativeai
+numpy
+pandas
