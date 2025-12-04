@@ -1,6 +1,6 @@
-streamlit>=1.28.0
+google-generativeai==0.5.0  # Updated to latest version
+streamlit>=1.28.1
 chromadb==0.4.15
 sentence-transformers
-google-generativeai
 numpy
 pandas
