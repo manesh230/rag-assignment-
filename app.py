@@ -9,559 +9,61 @@ import google.generativeai as genai
 import requests
 import zipfile
 import io
+import re
 
 # Your hardcoded API key
 GEMINI_API_KEY = "AIzaSyBf-9cpAIU3GDcaolT2zMQlRU5lR9CzAxY"
 
-# Custom CSS for modern medical interface
-st.markdown("""
-<style>
-    /* Main container styling */
-    .main-container {
-        padding: 2rem;
-    }
-    
-    /* Header styling */
-    .app-title {
-        font-size: 2.8rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-        text-align: center;
-    }
-    
-    .app-subtitle {
-        color: #6b7280;
-        font-size: 1.2rem;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    /* Card styling */
-    .custom-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.8rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        margin-bottom: 1.5rem;
-        border: 1px solid #e5e7eb;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .custom-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
-    }
-    
-    .card-title {
-        color: #374151;
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    /* Button styling */
-    .primary-button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        width: 100%;
-    }
-    
-    .primary-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
-    }
-    
-    .secondary-button {
-        background: white;
-        color: #667eea;
-        border: 2px solid #667eea;
-        padding: 10px 20px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        width: 100%;
-    }
-    
-    .secondary-button:hover {
-        background: #667eea;
-        color: white;
-    }
-    
-    /* Status indicators */
-    .status-indicator {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-right: 10px;
-        margin-bottom: 10px;
-    }
-    
-    .status-ready {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-        color: white;
-    }
-    
-    .status-processing {
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        color: white;
-    }
-    
-    .status-waiting {
-        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
-        color: white;
-    }
-    
-    /* Chat message styling */
-    .user-message {
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        padding: 1rem 1.5rem;
-        border-radius: 15px 15px 5px 15px;
-        margin: 10px 0;
-        max-width: 80%;
-        margin-left: auto;
-        border: 1px solid #c7d2fe;
-    }
-    
-    .ai-message {
-        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-        padding: 1rem 1.5rem;
-        border-radius: 15px 15px 15px 5px;
-        margin: 10px 0;
-        max-width: 80%;
-        margin-right: auto;
-        border: 1px solid #e9d5ff;
-    }
-    
-    /* Progress bar styling */
-    .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    /* Input field styling */
-    .stTextArea > div > div > textarea {
-        border-radius: 10px;
-        border: 2px solid #e5e7eb;
-        padding: 15px;
-        font-size: 1rem;
-    }
-    
-    .stTextArea > div > div > textarea:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    /* Sidebar styling */
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-    }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f8fafc;
-        padding: 8px;
-        border-radius: 10px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 10px 20px;
-        background-color: transparent;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: white;
-        color: #667eea;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Icon styling */
-    .icon-large {
-        font-size: 2rem;
-        margin-bottom: 10px;
-    }
-    
-    /* Warning/Info boxes */
-    .info-box {
-        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        border-left: 5px solid #3b82f6;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-    
-    .warning-box {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border-left: 5px solid #f59e0b;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-    
-    .success-box {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        border-left: 5px solid #10b981;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center;
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-top: 3rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e5e7eb;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state
-if 'initialized' not in st.session_state:
-    st.session_state.initialized = False
-if 'medical_ai' not in st.session_state:
-    st.session_state.medical_ai = None
-if 'data_extracted' not in st.session_state:
-    st.session_state.data_extracted = False
-if 'rag_system' not in st.session_state:
-    st.session_state.rag_system = None
-if 'conversation' not in st.session_state:
-    st.session_state.conversation = []
-
-# Main layout
-st.markdown('<div class="main-container">', unsafe_allow_html=True)
-
-# Header
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown('<h1 class="app-title">🩺 MediSage AI</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="app-subtitle">Intelligent Medical Diagnosis Assistant powered by AI</p>', unsafe_allow_html=True)
-
-# Sidebar for setup
-with st.sidebar:
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">⚙️ System Setup</div>', unsafe_allow_html=True)
-    
-    # Status indicators
-    st.markdown("### 📊 System Status")
-    
-    col_status1, col_status2 = st.columns(2)
-    with col_status1:
-        if st.session_state.data_extracted:
-            st.markdown('<span class="status-indicator status-ready">✅ Data Ready</span>', unsafe_allow_html=True)
-        else:
-            st.markdown('<span class="status-indicator status-waiting">⏳ Data Needed</span>', unsafe_allow_html=True)
-    
-    with col_status2:
-        if st.session_state.initialized:
-            st.markdown('<span class="status-indicator status-ready">✅ AI Ready</span>', unsafe_allow_html=True)
-        else:
-            st.markdown('<span class="status-indicator status-waiting">⏳ AI Needed</span>', unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Setup buttons
-    st.markdown("### 🔧 Setup Steps")
-    
-    if not st.session_state.data_extracted:
-        if st.button("📥 Step 1: Load Medical Data", type="primary", use_container_width=True):
-            with st.spinner("🔄 Downloading medical knowledge base..."):
-                # Data extraction logic here
-                st.session_state.data_extracted = True
-                st.rerun()
-    
-    if st.session_state.data_extracted and not st.session_state.initialized:
-        if st.button("🚀 Step 2: Launch AI Engine", type="primary", use_container_width=True):
-            with st.spinner("⚡ Initializing diagnostic engine..."):
-                # Initialize system logic here
-                st.session_state.initialized = True
-                st.rerun()
-    
-    st.markdown("---")
-    
-    # Quick actions
-    st.markdown("### ⚡ Quick Actions")
-    if st.button("🔄 Reset Session", use_container_width=True):
-        st.session_state.initialized = False
-        st.session_state.data_extracted = False
-        st.session_state.conversation = []
-        st.rerun()
-    
-    if st.button("📋 View History", use_container_width=True):
-        st.session_state.show_history = True
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Data source info
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">📚 Data Sources</div>', unsafe_allow_html=True)
-    st.markdown("""
-    - **Medical Knowledge Base**
-    - **Clinical Case Studies**
-    - **Diagnostic Protocols**
-    - **Treatment Guidelines**
-    """)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# Main content area
-if not st.session_state.data_extracted:
-    # Welcome screen
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">👋 Welcome to MediSage AI</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    ### Your Intelligent Medical Companion
-    
-    MediSage AI combines advanced AI with comprehensive medical knowledge to provide:
-    
-    🔍 **Accurate symptom analysis**
-    🩺 **Evidence-based diagnosis suggestions**
-    📚 **Clinical case insights**
-    💊 **Treatment information**
-    ⚠️ **Risk factor identification**
-    
-    ### 🚀 Getting Started
-    
-    1. **Click "Load Medical Data"** in the sidebar to load our medical knowledge base
-    2. **Click "Launch AI Engine"** to initialize the diagnostic system
-    3. **Start asking medical questions** to get intelligent responses
-    
-    *All interactions are confidential and for educational purposes*
-    """)
-    
-    st.markdown("---")
-    
-    # Features grid
-    st.markdown("### 🌟 Key Features")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown('<div class="custom-card" style="text-align: center;">', unsafe_allow_html=True)
-        st.markdown('### 🔬')
-        st.markdown('**Clinical Analysis**')
-        st.markdown('Evidence-based symptom evaluation')
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="custom-card" style="text-align: center;">', unsafe_allow_html=True)
-        st.markdown('### 📊')
-        st.markdown('**Case Insights**')
-        st.markdown('Real clinical case learning')
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown('<div class="custom-card" style="text-align: center;">', unsafe_allow_html=True)
-        st.markdown('### 💡')
-        st.markdown('**AI-Powered**')
-        st.markdown('Advanced diagnostic suggestions')
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-elif not st.session_state.initialized:
-    # Data loaded, AI not initialized
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">📁 Data Loaded Successfully</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    ### ✅ Medical Knowledge Base Ready
-    
-    Your medical data has been successfully loaded and processed. The system has:
-    
-    - **Processed diagnostic knowledge graphs**
-    - **Indexed clinical case studies**
-    - **Organized treatment protocols**
-    - **Prepared risk assessment data**
-    
-    ### 🚀 Next Step: Launch AI Engine
-    
-    Click the **"Launch AI Engine"** button in the sidebar to activate the intelligent diagnostic system.
-    
-    *This may take a few moments to initialize all AI components*
-    """)
-    
-    st.markdown('<div class="info-box">', unsafe_allow_html=True)
-    st.markdown("""
-    **ℹ️ System Status:**
-    - Data Processing: ✅ Complete
-    - Knowledge Indexing: ✅ Complete
-    - AI Engine: ⏳ Awaiting Activation
-    - Medical Database: ✅ Ready
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-else:
-    # Full system active
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">💬 Diagnostic Consultation</div>', unsafe_allow_html=True)
-    
-    # Chat interface
-    st.markdown("### 🤔 Describe Symptoms or Ask Questions")
-    
-    # Enhanced text input
-    user_input = st.text_area(
-        "",
-        placeholder="Example: Patient presents with persistent headache, nausea, and sensitivity to light...",
-        height=120,
-        label_visibility="collapsed",
-        key="user_input"
-    )
-    
-    # Send button with icon
-    col_send, col_clear, col_options = st.columns([2, 1, 1])
-    with col_send:
-        send_button = st.button("🔍 Analyze & Diagnose", type="primary", use_container_width=True)
-    
-    with col_clear:
-        if st.button("🗑️ Clear", use_container_width=True):
-            st.session_state.conversation = []
-            st.rerun()
-    
-    with col_options:
-        show_details = st.checkbox("📋 Details", value=True)
-    
-    if send_button and user_input:
-        # Add user message to conversation
-        st.session_state.conversation.append({
-            "role": "user",
-            "content": user_input,
-            "timestamp": "Now"
-        })
-        
-        # Simulate AI response (replace with actual logic)
-        with st.spinner("🧠 Analyzing symptoms and searching medical database..."):
-            # Your AI response logic here
-            ai_response = f"**Analysis Complete**\n\nBased on the symptoms described, I've analyzed this case against our medical knowledge base. The presentation suggests several potential considerations that should be evaluated through proper clinical assessment."
-            
-            st.session_state.conversation.append({
-                "role": "ai",
-                "content": ai_response,
-                "timestamp": "Just now"
-            })
-            
-            st.rerun()
-    
-    # Display conversation
-    if st.session_state.conversation:
-        st.markdown("### 📜 Consultation History")
-        for msg in st.session_state.conversation[-5:]:  # Show last 5 messages
-            if msg["role"] == "user":
-                st.markdown(f'<div class="user-message"><strong>👤 You:</strong><br>{msg["content"]}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="ai-message"><strong>🤖 MediSage:</strong><br>{msg["content"]}</div>', unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Quick questions panel
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">💡 Quick Inquiries</div>', unsafe_allow_html=True)
-    
-    st.markdown("Click any question below for instant analysis:")
-    
-    questions_grid = st.columns(2)
-    
-    quick_questions = [
-        "Migraine symptoms and triggers",
-        "Heart attack warning signs",
-        "Diabetes management guidelines",
-        "Asthma treatment protocols",
-        "Hypertension risk factors",
-        "Pneumonia diagnosis criteria"
+# Function to detect if question is about robots/machines
+def is_about_robot_machine(question):
+    """
+    Detect if the question is asking about robots, machines, or non-human entities
+    """
+    question_lower = question.lower()
+    
+    # Keywords that indicate robot/machine context
+    robot_keywords = [
+        'robot', 'machine', 'android', 'cyborg', 'ai system', 'artificial intelligence',
+        'computer system', 'electronic', 'mechanical', 'automaton', 'automated',
+        'hardware', 'software', 'circuit', 'chip', 'processor', 'gadget',
+        'device', 'appliance', 'equipment', 'instrument', 'tool',
+        'non-human', 'non human', 'not human', 'without human'
     ]
     
-    for i, question in enumerate(quick_questions):
-        col_idx = i % 2
-        with questions_grid[col_idx]:
-            if st.button(f"💭 {question}", use_container_width=True):
-                st.session_state.user_input = question
-                st.rerun()
+    # Check for robot/machine keywords
+    for keyword in robot_keywords:
+        if keyword in question_lower:
+            return True
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Check for phrases like "in robot" or "for machine"
+    patterns = [
+        r'in (?:a )?(?:robot|machine|android)',
+        r'for (?:a )?(?:robot|machine|android)',
+        r'of (?:a )?(?:robot|machine|android)',
+        r'(?:robot|machine|android)(?:\'s)? (?:symptoms|causes|disease|health)',
+    ]
     
-    # System information panel
-    with st.expander("📊 System Information & Settings"):
-        tab1, tab2, tab3 = st.tabs(["Performance", "Database", "Settings"])
-        
-        with tab1:
-            st.markdown("### ⚡ System Performance")
-            col_perf1, col_perf2, col_perf3 = st.columns(3)
-            with col_perf1:
-                st.metric("Response Time", "0.8s", "-0.1s")
-            with col_perf2:
-                st.metric("Accuracy Score", "94%", "+2%")
-            with col_perf3:
-                st.metric("Uptime", "99.9%", "Stable")
-            
-            st.progress(85, text="System Optimization")
-        
-        with tab2:
-            st.markdown("### 🗄️ Knowledge Base")
-            col_db1, col_db2 = st.columns(2)
-            with col_db1:
-                st.metric("Medical Conditions", "150+")
-                st.metric("Case Studies", "2,500+")
-            with col_db2:
-                st.metric("Treatment Protocols", "85+")
-                st.metric("Updated", "Today")
-        
-        with tab3:
-            st.markdown("### ⚙️ Advanced Settings")
-            response_length = st.select_slider(
-                "Response Detail Level",
-                options=["Brief", "Standard", "Detailed", "Comprehensive"]
-            )
-            
-            st.checkbox("Include clinical references", value=True)
-            st.checkbox("Show risk assessments", value=True)
-            st.checkbox("Provide follow-up questions", value=True)
+    for pattern in patterns:
+        if re.search(pattern, question_lower):
+            return True
+    
+    return False
 
-# Footer
-st.markdown("---")
-st.markdown('<div class="footer">', unsafe_allow_html=True)
-st.markdown("""
-**🩺 MediSage AI v2.1** | *Advanced Medical Intelligence Platform*  
-⚠️ **Important Notice:** This system provides educational information only.  
-Always consult healthcare professionals for medical diagnosis and treatment.
-""")
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Keep the original classes unchanged (they're hidden from the interface)
 class DataExtractor:
     def __init__(self):
         self.zip_path = "./data.zip"
         self.extracted_path = "./data_extracted"
-        self.github_url = "https://github.com/Mustehsan-Nisar-Rao/RAG/raw/main/mimic-iv-ext-direct-1.0.zip"
+        self.github_url = "https://github.com/manesh230/RAG/blob/main/mimic-iv-ext-direct-1.0.0.zip"
         
     def download_from_github(self):
         """Download ZIP file from GitHub"""
         try:
             st.info("📥 Downloading data from GitHub...")
             
-            # Use raw GitHub URL
-            response = requests.get(self.github_url, stream=True)
+            # Use raw GitHub URL - FIXED: Need raw.githubusercontent.com for direct download
+            raw_url = self.github_url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+            
+            response = requests.get(raw_url, stream=True)
             
             if response.status_code == 200:
                 total_size = int(response.headers.get('content-length', 0))
@@ -587,6 +89,19 @@ class DataExtractor:
                 return True
             else:
                 st.error(f"❌ Failed to download file. HTTP Status: {response.status_code}")
+                st.info(f"💡 Trying alternative URL...")
+                
+                # Try alternative URL format
+                alt_url = "https://raw.githubusercontent.com/manesh230/RAG/main/mimic-iv-ext-direct-1.0.0.zip"
+                response = requests.get(alt_url, stream=True)
+                
+                if response.status_code == 200:
+                    with open(self.zip_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    st.success("✅ Successfully downloaded using alternative URL")
+                    return True
                 return False
                 
         except Exception as e:
@@ -654,6 +169,12 @@ class SimpleDataProcessor:
         self.kg_path = self._find_valid_path(self.possible_kg_paths)
         self.cases_path = self._find_valid_path(self.possible_case_paths)
         
+        # Log found paths
+        if self.kg_path:
+            st.info(f"📁 Knowledge graph path: {self.kg_path}")
+        if self.cases_path:
+            st.info(f"📁 Cases path: {self.cases_path}")
+    
     def _find_valid_path(self, possible_paths):
         """Find the first valid path that exists"""
         for path in possible_paths:
@@ -684,6 +205,7 @@ class SimpleDataProcessor:
                 elif item.endswith('.json'):
                     case_count += 1
 
+        st.info(f"📊 Found {kg_count} knowledge files and {case_count} case files")
         return kg_count, case_count
 
     def extract_knowledge(self):
@@ -691,11 +213,22 @@ class SimpleDataProcessor:
         chunks = []
 
         if not self.kg_path or not os.path.exists(self.kg_path):
+            st.error(f"❌ Knowledge graph path not found")
+            st.info(f"💡 Checked paths: {self.possible_kg_paths}")
             return chunks
 
+        # Set up progress
         files = [f for f in os.listdir(self.kg_path) if f.endswith('.json')]
+        total_files = len(files)
         
-        for filename in files:
+        if total_files == 0:
+            st.warning("⚠️ No JSON files found in knowledge graph directory")
+            return chunks
+            
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        for i, filename in enumerate(files):
             file_path = os.path.join(self.kg_path, filename)
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -706,21 +239,32 @@ class SimpleDataProcessor:
 
                 for stage_name, stage_data in knowledge.items():
                     if isinstance(stage_data, dict):
+                        # Extract risk factors
                         if stage_data.get('Risk Factors'):
                             chunks.append({
                                 'text': f"{condition} - Risk Factors: {stage_data['Risk Factors']}",
                                 'metadata': {'type': 'knowledge', 'category': 'risk_factors', 'condition': condition}
                             })
 
+                        # Extract symptoms
                         if stage_data.get('Symptoms'):
                             chunks.append({
                                 'text': f"{condition} - Symptoms: {stage_data['Symptoms']}",
                                 'metadata': {'type': 'knowledge', 'category': 'symptoms', 'condition': condition}
                             })
                 
+                # Update progress
+                progress = int(100 * (i + 1) / total_files)
+                progress_bar.progress(progress)
+                status_text.text(f"Processing knowledge files... {i+1}/{total_files}")
+                
             except Exception as e:
+                st.warning(f"⚠️ Error processing {filename}: {e}")
                 continue
 
+        progress_bar.empty()
+        status_text.empty()
+        st.success(f"✅ Extracted {len(chunks)} knowledge chunks from {total_files} files")
         return chunks
 
     def extract_patient_cases(self):
@@ -728,19 +272,50 @@ class SimpleDataProcessor:
         chunks = []
 
         if not self.cases_path or not os.path.exists(self.cases_path):
+            st.error(f"❌ Cases path not found")
+            st.info(f"💡 Checked paths: {self.possible_case_paths}")
             return chunks
 
+        # Count total files for progress
+        total_files = 0
+        file_paths = []
+        
         for item in os.listdir(self.cases_path):
             item_path = os.path.join(self.cases_path, item)
             if os.path.isdir(item_path):
                 for root, dirs, files in os.walk(item_path):
-                    for filename in files:
-                        if filename.endswith('.json'):
-                            file_path = os.path.join(root, filename)
-                            self._process_case_file(file_path, item, chunks)
+                    json_files = [f for f in files if f.endswith('.json')]
+                    total_files += len(json_files)
+                    for f in json_files:
+                        file_paths.append((os.path.join(root, f), item))
             elif item.endswith('.json'):
-                self._process_case_file(item_path, "General", chunks)
+                total_files += 1
+                file_paths.append((item_path, "General"))
 
+        if total_files == 0:
+            st.warning("⚠️ No case files found")
+            return chunks
+
+        # Set up progress
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        processed_files = 0
+        for file_path, condition_folder in file_paths:
+            self._process_case_file(file_path, condition_folder, chunks)
+            processed_files += 1
+            
+            # Update progress
+            progress = int(100 * processed_files / total_files)
+            progress_bar.progress(progress)
+            status_text.text(f"Processing case files... {processed_files}/{total_files}")
+
+        progress_bar.empty()
+        status_text.empty()
+
+        narratives = len([c for c in chunks if c['metadata']['type'] == 'narrative'])
+        reasoning = len([c for c in chunks if c['metadata']['type'] == 'reasoning'])
+        st.success(f"✅ Extracted {narratives} narrative chunks and {reasoning} reasoning chunks from {total_files} case files")
         return chunks
 
     def _process_case_file(self, file_path, condition_folder, chunks):
@@ -774,8 +349,8 @@ class SimpleDataProcessor:
                             'text': f"Case {case_id} - {condition_folder}\nReasoning:\n{reasoning}",
                             'metadata': {'type': 'reasoning', 'case_id': case_id, 'condition': condition_folder}
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            st.warning(f"⚠️ Error processing {file_path}: {e}")
 
     def _extract_reasoning(self, data):
         """Simple reasoning extraction"""
@@ -803,11 +378,33 @@ class SimpleDataProcessor:
 
     def run(self):
         """Run complete extraction"""
+        st.info("🚀 Starting data extraction...")
+
+        # Check if data exists
+        kg_exists, cases_exists = self.check_data_exists()
+        if not kg_exists and not cases_exists:
+            st.error("❌ No valid data found after extraction.")
+            st.info("💡 Please check the ZIP file structure")
+            return []
+
+        # Count files
+        kg_count, case_count = self.count_files()
+
+        if kg_count == 0 and case_count == 0:
+            st.error("❌ No JSON files found in data directories.")
+            return []
+
         # Extract data
         knowledge_chunks = self.extract_knowledge()
         case_chunks = self.extract_patient_cases()
 
         all_chunks = knowledge_chunks + case_chunks
+
+        if all_chunks:
+            st.success(f"🎯 Extraction complete: {len(knowledge_chunks)} knowledge + {len(case_chunks)} cases = {len(all_chunks)} total chunks")
+        else:
+            st.error("❌ No data chunks were extracted")
+
         return all_chunks
 
 class SimpleRAGSystem:
@@ -817,23 +414,27 @@ class SimpleRAGSystem:
         try:
             self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
             self.client = chromadb.PersistentClient(path=db_path)
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(f"Error initializing RAG system: {e}")
 
     def create_collections(self):
         """Create separate collections for knowledge and cases"""
         try:
+            # Knowledge collection
             self.knowledge_collection = self.client.get_or_create_collection(
                 name="medical_knowledge",
                 embedding_function=self.embedding_function
             )
 
+            # Cases collection
             self.cases_collection = self.client.get_or_create_collection(
                 name="patient_cases",
                 embedding_function=self.embedding_function
             )
-        except Exception:
-            pass
+
+            st.success("✅ Created ChromaDB collections")
+        except Exception as e:
+            st.error(f"Error creating collections: {e}")
 
     def index_data(self):
         """Index all chunks into ChromaDB"""
@@ -841,6 +442,10 @@ class SimpleRAGSystem:
         case_docs, case_metas, case_ids = [], [], []
 
         try:
+            total_chunks = len(self.chunks)
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
             for i, chunk in enumerate(self.chunks):
                 if chunk['metadata']['type'] == 'knowledge':
                     knowledge_docs.append(chunk['text'])
@@ -851,6 +456,15 @@ class SimpleRAGSystem:
                     case_metas.append(chunk['metadata'])
                     case_ids.append(f"case_{i}")
 
+                # Update progress
+                progress = int(100 * (i + 1) / total_chunks)
+                progress_bar.progress(progress)
+                status_text.text(f"Indexing chunks... {i+1}/{total_chunks}")
+
+            progress_bar.empty()
+            status_text.empty()
+
+            # Add to collections
             if knowledge_docs:
                 self.knowledge_collection.add(
                     documents=knowledge_docs,
@@ -864,22 +478,27 @@ class SimpleRAGSystem:
                     metadatas=case_metas,
                     ids=case_ids
                 )
-        except Exception:
-            pass
+
+            st.success(f"✅ Indexed {len(knowledge_docs)} knowledge chunks and {len(case_docs)} case chunks")
+        except Exception as e:
+            st.error(f"Error indexing data: {e}")
 
     def query(self, question, top_k=5):
         """Simple query across both collections"""
         try:
+            # Query knowledge
             knowledge_results = self.knowledge_collection.query(
                 query_texts=[question],
                 n_results=top_k
             )
 
+            # Query cases
             case_results = self.cases_collection.query(
                 query_texts=[question],
                 n_results=top_k
             )
 
+            # Combine results
             all_results = []
             if knowledge_results['documents']:
                 all_results.extend(knowledge_results['documents'][0])
@@ -887,7 +506,8 @@ class SimpleRAGSystem:
                 all_results.extend(case_results['documents'][0])
 
             return all_results
-        except Exception:
+        except Exception as e:
+            st.error(f"Error querying RAG system: {e}")
             return []
 
 class MedicalAI:
@@ -895,25 +515,287 @@ class MedicalAI:
         self.rag = rag_system
         try:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
-        except Exception:
-            pass
+            # Use a more widely available model
+            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        except Exception as e:
+            st.error(f"Error initializing Gemini: {e}")
 
     def ask(self, question):
         try:
+            # Check if question is about robots/machines
+            if is_about_robot_machine(question):
+                return """🚫 **No Medical Information Available for Robots/Machines**
+
+This medical knowledge system contains information specifically about **human health and diseases**. 
+
+**Important Notice:**
+- This database contains information about **human beings only**
+- **No data** exists for robots, machines, or artificial systems
+- Medical symptoms, causes, and diseases apply to **biological humans only**
+
+**Human vs. Robot Differences:**
+✅ **Humans:** Have biological symptoms (pain, fever, fatigue)  
+❌ **Robots:** Have technical issues (malfunctions, errors, hardware failures)  
+✅ **Humans:** Experience diseases (infections, chronic conditions)  
+❌ **Robots:** Experience technical faults (software bugs, hardware damage)  
+
+*Please ask about human medical conditions for accurate information.*"""
+            
+            # Get relevant context from RAG
             context_chunks = self.rag.query(question, top_k=5)
             context = "\n---\n".join(context_chunks)
 
-            prompt = f"""You are a medical expert. Use the following medical context to answer the question accurately and comprehensively.
-
-MEDICAL CONTEXT:
-{context}
-
-QUESTION: {question}
-
-Please provide a comprehensive medical answer based on the context. Focus on the information available in the context."""
+            # Create prompt with emphasis on human context
+            prompt = f"""You are a medical expert specializing in HUMAN medicine. 
+            Use the following medical context to answer the question accurately and comprehensively.
+            
+            **IMPORTANT CONTEXT:** 
+            - All information is about HUMAN BEINGS only
+            - Symptoms and causes apply to biological humans
+            - This is NOT applicable to robots, machines, or artificial systems
+            
+            MEDICAL CONTEXT (HUMAN-ONLY DATA):
+            {context}
+            
+            QUESTION: {question}
+            
+            Please provide a comprehensive medical answer based on HUMAN medicine.
+            If appropriate, mention that this information applies to humans only."""
 
             response = self.model.generate_content(prompt)
             return response.text
-        except Exception:
-            return "Error processing request"
+        except Exception as e:
+            return f"Error: {e}"
+
+def main():
+    st.set_page_config(
+        page_title="Human Medical Diagnosis System",
+        page_icon="🏥",
+        layout="wide"
+    )
+
+    # Custom CSS for clear human vs robot distinction
+    st.markdown("""
+    <style>
+    .human-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .warning-box {
+        background-color: #FEF3C7;
+        border-left: 5px solid #F59E0B;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+    }
+    .info-box {
+        background-color: #E0F2FE;
+        border-left: 5px solid #0EA5E9;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Human-only banner
+    st.markdown("""
+    <div class="human-banner">
+        <h2>🏥 HUMAN MEDICAL DIAGNOSIS SYSTEM</h2>
+        <p>This system contains information about <strong>HUMAN BEINGS</strong> only. No data for robots or machines.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Warning about robot/machine questions
+    st.markdown("""
+    <div class="warning-box">
+        ⚠️ <strong>Important Notice:</strong> This medical knowledge base contains information about <strong>HUMAN HEALTH</strong> only.
+        Questions about robots, machines, or artificial systems will receive no medical information as they don't apply.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("Ask medical questions about **human** symptoms, diagnoses, and patient cases")
+
+    # Initialize session state
+    if 'initialized' not in st.session_state:
+        st.session_state.initialized = False
+    if 'medical_ai' not in st.session_state:
+        st.session_state.medical_ai = None
+    if 'data_extracted' not in st.session_state:
+        st.session_state.data_extracted = False
+    if 'rag_system' not in st.session_state:
+        st.session_state.rag_system = None
+
+    # Sidebar for configuration
+    with st.sidebar:
+        st.header("Configuration")
+        
+        # Show API key status (hardcoded, no input needed)
+        st.sidebar.success("🔑 API key configured")
+        
+        # Data extraction section
+        st.sidebar.subheader("📁 Data Setup")
+        
+        if not st.session_state.data_extracted:
+            if st.sidebar.button("📥 Download & Extract Data", type="primary"):
+                with st.spinner("Downloading data from GitHub and extracting..."):
+                    extractor = DataExtractor()
+                    if extractor.extract_data():
+                        st.session_state.data_extracted = True
+                        st.session_state.extractor = extractor
+                        st.rerun()
+
+        # Initialize system
+        if st.session_state.data_extracted and not st.session_state.initialized:
+            if st.sidebar.button("🚀 Initialize System", type="primary"):
+                try:
+                    with st.spinner("🚀 Processing medical data and setting up RAG system... This may take a few minutes."):
+                        # Initialize processor and extract data
+                        processor = SimpleDataProcessor(st.session_state.extractor.extracted_path)
+                        chunks = processor.run()
+
+                        if not chunks:
+                            st.error("❌ No data was extracted. Please check your data file structure.")
+                            return
+
+                        # Initialize RAG system
+                        rag_system = SimpleRAGSystem(chunks)
+                        rag_system.create_collections()
+                        rag_system.index_data()
+
+                        # Initialize Medical AI with hardcoded API key
+                        st.session_state.medical_ai = MedicalAI(rag_system, GEMINI_API_KEY)
+                        st.session_state.rag_system = rag_system
+                        st.session_state.initialized = True
+
+                    st.success("✅ System initialized successfully!")
+                    st.balloons()
+
+                except Exception as e:
+                    st.error(f"❌ Error initializing system: {str(e)}")
+
+    # Main interface
+    if st.session_state.initialized and st.session_state.medical_ai:
+        st.header("💬 Medical Query Interface (Human Patients Only)")
+
+        # Question input with clear human context
+        question = st.text_area(
+            "Enter your medical question about HUMAN health:",
+            placeholder="e.g., What are the symptoms of heart disease in humans? How is chest pain evaluated in human patients?",
+            height=100
+        )
+
+        # Human/Robot detection indicator
+        if question:
+            if is_about_robot_machine(question):
+                st.error("⚠️ **DETECTED:** Question appears to be about robots/machines. Medical information only available for humans.")
+            else:
+                st.success("✅ **DETECTED:** Question appears to be about human health. Proceeding with medical information.")
+
+        # Advanced options
+        with st.expander("Advanced Options"):
+            col1, col2 = st.columns(2)
+            with col1:
+                top_k = st.slider("Number of context chunks", min_value=1, max_value=10, value=5)
+            with col2:
+                show_context = st.checkbox("Show retrieved context", value=False)
+
+        if st.button("Get Medical Answer", type="primary", use_container_width=True) and question:
+            with st.spinner("🔍 Analyzing medical context and generating answer..."):
+                try:
+                    # Get answer
+                    answer = st.session_state.medical_ai.ask(question)
+
+                    # Display answer with appropriate header
+                    if is_about_robot_machine(question):
+                        st.subheader("🤖 Response for Non-Human Query")
+                    else:
+                        st.subheader("👨‍⚕️ Medical Answer for Human Health")
+                    
+                    st.markdown(f"**Question:** {question}")
+                    st.markdown("**Answer:**")
+                    st.write(answer)
+
+                    # Show context if requested
+                    if show_context and not is_about_robot_machine(question):
+                        st.subheader("📚 Retrieved Context (Human Medical Data)")
+                        context_chunks = st.session_state.rag_system.query(question, top_k=top_k)
+                        
+                        if context_chunks:
+                            for i, chunk in enumerate(context_chunks):
+                                with st.expander(f"Context Chunk {i+1}"):
+                                    st.text(chunk[:500] + "..." if len(chunk) > 500 else chunk)
+                        else:
+                            st.info("No relevant context found in the human medical database.")
+
+                except Exception as e:
+                    st.error(f"❌ Error generating answer: {str(e)}")
+
+        # Example questions - ONLY HUMAN examples
+        st.subheader("💡 Example Questions (Human Health)")
+        human_examples = [
+            "What are the symptoms of heart disease in human beings?",
+            "How is chest pain evaluated in human patients?",
+            "What causes high blood pressure in humans?",
+            "Describe diabetes symptoms in human patients",
+            "What are common causes of headaches in humans?"
+        ]
+
+        # Contrast with robot examples
+        with st.expander("❌ What NOT to ask (Robot/Machine Questions)"):
+            st.markdown("""
+            These questions will receive **NO MEDICAL INFORMATION**:
+            - What are the symptoms of heart disease in robots?
+            - What causes headaches in machines?
+            - How is diabetes diagnosed in androids?
+            - What are cancer symptoms for AI systems?
+            """)
+        
+        cols = st.columns(2)
+        for i, example in enumerate(human_examples):
+            with cols[i % 2]:
+                if st.button(example, use_container_width=True):
+                    st.session_state.last_question = example
+                    st.rerun()
+
+        # System info with human-only disclaimer
+        with st.expander("📊 System Information"):
+            st.markdown("""
+            **⚠️ IMPORTANT DISCLAIMER:**
+            - This system contains **HUMAN MEDICAL DATA ONLY**
+            - All symptoms, causes, and treatments apply to **biological humans**
+            - **NO INFORMATION** available for robots, machines, or artificial systems
+            """)
+            
+            if st.session_state.rag_system:
+                knowledge_count = len([c for c in st.session_state.rag_system.chunks if c['metadata']['type'] == 'knowledge'])
+                narrative_count = len([c for c in st.session_state.rag_system.chunks if c['metadata']['type'] == 'narrative'])
+                reasoning_count = len([c for c in st.session_state.rag_system.chunks if c['metadata']['type'] == 'reasoning'])
+                
+                st.write(f"**Human medical knowledge chunks:** {knowledge_count}")
+                st.write(f"**Human patient case narratives:** {narrative_count}")
+                st.write(f"**Human diagnostic reasoning:** {reasoning_count}")
+                st.write(f"**Total human medical data chunks:** {len(st.session_state.rag_system.chunks)}")
+
+    else:
+        st.info("""
+        👋 **Welcome to the Human Medical RAG System!**
+        
+        This system contains **medical information about HUMAN BEINGS only**.
+        
+        To get started:
+        1. 📥 Click 'Download & Extract Data' to get human medical data
+        2. 🚀 Click 'Initialize System' to build the RAG system
+        
+        **⚠️ Important:** No medical information available for robots or machines.
+        
+        *API key is pre-configured*
+        *Data source: Human medical cases only*
+        """)
+
+if __name__ == "__main__":
+    main()
