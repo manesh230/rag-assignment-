@@ -11,7 +11,7 @@ import zipfile
 import io
 
 # Your hardcoded API key
-GEMINI_API_KEY = "AIzaSyApdw7DT1rJC4Nk79c1-fsJ-jR0QeqBmvo"
+GEMINI_API_KEY = "AIzaSyBf-9cpAIU3GDcaolT2zMQlRU5lR9CzAxY"
 
 # Custom CSS for modern medical interface
 st.markdown("""
